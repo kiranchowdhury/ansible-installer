@@ -10,6 +10,7 @@
 VERSION="1.0.1"
 PROG="ePricer"
 INSTALLER_URL=""
+OPS_CLONE_URL="git@github.ibm.com:operation-squads/operator.git"
 GIT_URL="git url"
 SLACK_URL="next slack url"
 
@@ -85,6 +86,10 @@ function install {
 
   install_deps
   log "Install finished."
+  log "Starting setup."
+  createAnsibleAdmin
+  git_add_ssh_key
+  cloneOpsRepo
 }
 
 #------------------------------------------------------------------------------
@@ -124,8 +129,15 @@ function install_deps_with_yum {
       log  "Please review any setup requirements for 'git' from: https://git-scm.com/downloads"
     fi
 
+    #-- Tree:
+    log "Installing/updating external dependency: tree"
+    if [[ -z "$(which ansible)" || "$FORCE" == true ]]; then
+      $sudo yum install -y tree
+      log  "Tree installed successfully"
+    fi
+
     #-- Ansible:
-    log "Installing/updating external dependency: helm"
+    log "Installing/updating external dependency: ansible"
     if [[ -z "$(which ansible)" || "$FORCE" == true ]]; then
       $sudo yum install -y ansible
       log  "Please review any information for 'ansible' from: https://www.ansible.com/resources/get-started"
@@ -174,6 +186,42 @@ function install_deps_with_apt_get {
     fi
 }
 
+#------------------------------------------------------------------------------
+# Create Ansible Admin
+#------------------------------------------------------------------------------
+function createAnsibleAdmin {
+  log "Creating ansible admin ansadmin"
+  $sudo useradd ansadmin
+  $sudo passwd ansadmin
+}
+
+#------------------------------------------------------------------------------
+# Configure Git For Ansible Admin
+#------------------------------------------------------------------------------
+function git_add_ssh_key {
+  log "Configuring git for ansadmin.."
+  read -p "Enter github email : " email
+  log "Using email $email"
+  warn "(MAKE SURE TO GENERATE THE SSH KEY UNDER /home/ansadmin/.ssh)"
+  if [ ! -f /home/ansadmin/.ssh/id_rsa ]; then
+    ssh-keygen -t rsa -b 4096 -C "$email"
+    ssh-add /home/ansadmin/.ssh/id_rsa
+  fi
+  pub=`cat /home/ansadmin/.ssh/id_rsa.pub`
+  read -p "Enter github username: " githubuser
+  log "Using username $githubuser"
+  read -s -p "Enter github password for user $githubuser: " githubpass
+  curl -u "$githubuser:$githubpass" -X POST -d "{\"title\":\"`hostname`\",\"key\":\"$pub\"}" https://github.ibm.com/api/v3/user/keys
+  $sudo chown -R ansadmin:ansadmin /home/ansadmin/.ssh
+}
+
+#------------------------------------------------------------------------------
+# Configure Git For Ansible Admin
+#------------------------------------------------------------------------------
+function cloneOpsRepo {
+  git clone ${OPS_CLONE_URL} /home/ansadmin/workspace/operator
+  $sudo chown -R ansadmin:ansadmin /home/ansadmin/workspace
+}
 
 #------------------------------------------------------------------------------
 # MAIN
@@ -219,7 +267,6 @@ function main {
     ;;
   *)
     warn "Only Linux systems are supported by this installer."
-    warn "For Windows, please follow manual installation instructions at:"
     error "Unsupported platform: ${PLATFORM}"
     ;;
   esac
