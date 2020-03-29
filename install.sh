@@ -88,6 +88,7 @@ function install {
   log "Install finished."
   log "Starting setup."
   createAnsibleAdmin
+  git_add_ssh_key_root
   git_add_ssh_key
   cloneOpsRepo
 }
@@ -193,6 +194,24 @@ function createAnsibleAdmin {
   log "Creating ansible admin ansadmin"
   $sudo useradd ansadmin
   $sudo passwd ansadmin
+}
+
+#------------------------------------------------------------------------------
+# Configure Git For Root User
+#------------------------------------------------------------------------------
+function git_add_ssh_key_root {
+  log "Configuring git for su"
+  read -p "Enter github email : " email
+  log "Using email $email"
+  if [ ! -f ~/.ssh/id_rsa ]; then
+    ssh-keygen -t rsa -b 4096 -C "$email"
+    ssh-add ~/.ssh/id_rsa
+  fi
+  pub=`cat ~/.ssh/id_rsa.pub`
+  read -p "Enter github username: " githubuser
+  echo "Using username $githubuser"
+  read -s -p "Enter github password for user $githubuser: " githubpass
+  curl -u "$githubuser:$githubpass" -X POST -d "{\"title\":\"`hostname`\",\"key\":\"$pub\"}" https://github.ibm.com/api/v3/user/keys
 }
 
 #------------------------------------------------------------------------------
