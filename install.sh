@@ -173,7 +173,10 @@ function install_deps_with_apt_get {
       log  "Please review any information for 'ansible' from: https://www.ansible.com/resources/get-started"
     fi
 }
-
+#------------------------------------------------------------------------------
+#-- Kick things off
+#------------------------------------------------------------------------------
+main "$@"
 
 #------------------------------------------------------------------------------
 # MAIN
