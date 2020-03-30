@@ -86,11 +86,11 @@ function install {
 
   install_deps
   log "Install finished."
-  log "Starting setup."
+  log "###########Starting setup###############"
   createAnsibleAdmin
-  git_add_ssh_key_root
   git_add_ssh_key
   cloneOpsRepo
+  switchToAnsAdmin
 }
 
 #------------------------------------------------------------------------------
@@ -133,14 +133,14 @@ function install_deps_with_yum {
     #-- Tree:
     log "Installing/updating external dependency: tree"
     if [[ -z "$(which ansible)" || "$FORCE" == true ]]; then
-      $sudo yum install -y tree
+      $SUDO yum install -y tree
       log  "Tree installed successfully"
     fi
 
     #-- Ansible:
     log "Installing/updating external dependency: ansible"
     if [[ -z "$(which ansible)" || "$FORCE" == true ]]; then
-      $sudo yum install -y ansible
+      $SUDO yum install -y ansible
       log  "Please review any information for 'ansible' from: https://www.ansible.com/resources/get-started"
     fi
 }
@@ -180,9 +180,9 @@ function install_deps_with_apt_get {
     #-- ANSIBLE:
     log "Installing/updating external dependency: ansible"
     if [[ -z "$(which ansible)" || "$FORCE" == true ]]; then
-      $sudo apt update
-      $sudo apt-add-repository --yes --update ppa:ansible/ansible
-      $sudo apt install ansible
+      $SUDO apt update
+      $SUDO apt-add-repository --yes --update ppa:ansible/ansible
+      $SUDO apt install ansible
       log  "Please review any information for 'ansible' from: https://www.ansible.com/resources/get-started"
     fi
 }
@@ -192,14 +192,14 @@ function install_deps_with_apt_get {
 #------------------------------------------------------------------------------
 function createAnsibleAdmin {
   log "Creating ansible admin ansadmin"
-  $sudo useradd ansadmin
-  $sudo passwd ansadmin
+  $SUDO useradd ansadmin
+  $SUDO passwd ansadmin
 }
 
 #------------------------------------------------------------------------------
-# Configure Git For Root User
+# Configure Git
 #------------------------------------------------------------------------------
-function git_add_ssh_key_root {
+function git_add_ssh_key {
   log "Configuring git for su"
   read -p "Enter github email : " email
   log "Using email $email"
@@ -214,32 +214,23 @@ function git_add_ssh_key_root {
   curl -u "$githubuser:$githubpass" -X POST -d "{\"title\":\"`hostname`\",\"key\":\"$pub\"}" https://github.ibm.com/api/v3/user/keys
 }
 
-#------------------------------------------------------------------------------
-# Configure Git For Ansible Admin
-#------------------------------------------------------------------------------
-function git_add_ssh_key {
-  log "Configuring git for ansadmin.."
-  read -p "Enter github email : " email
-  log "Using email $email"
-  warn "(MAKE SURE TO GENERATE THE SSH KEY UNDER /home/ansadmin/.ssh)"
-  if [ ! -f /home/ansadmin/.ssh/id_rsa ]; then
-    ssh-keygen -t rsa -b 4096 -C "$email"
-    ssh-add /home/ansadmin/.ssh/id_rsa
-  fi
-  pub=`cat /home/ansadmin/.ssh/id_rsa.pub`
-  read -p "Enter github username: " githubuser
-  log "Using username $githubuser"
-  read -s -p "Enter github password for user $githubuser: " githubpass
-  curl -u "$githubuser:$githubpass" -X POST -d "{\"title\":\"`hostname`\",\"key\":\"$pub\"}" https://github.ibm.com/api/v3/user/keys
-  $sudo chown -R ansadmin:ansadmin /home/ansadmin/.ssh
-}
 
 #------------------------------------------------------------------------------
 # Configure Git For Ansible Admin
 #------------------------------------------------------------------------------
 function cloneOpsRepo {
   git clone ${OPS_CLONE_URL} /home/ansadmin/workspace/operator
-  $sudo chown -R ansadmin:ansadmin /home/ansadmin/workspace
+  $SUDO chown -R ansadmin:ansadmin /home/ansadmin/workspace
+  log "Operator repo cloned under /home/ansadmin/workspace"
+  log "##############Setup successfully finished###############"
+}
+
+
+#------------------------------------------------------------------------------
+# Switching to ansible admin account
+#------------------------------------------------------------------------------
+function switchToAnsAdmin {
+  $SUDO su - ansadmin
 }
 
 #------------------------------------------------------------------------------
