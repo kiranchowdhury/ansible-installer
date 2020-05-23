@@ -1,0 +1,12 @@
+pipeline {
+  agent any
+
+  stages {
+
+    stage('Install required cli') {
+      steps {
+        echo "Hello Ansible"
+      }
+    }
+
+}
